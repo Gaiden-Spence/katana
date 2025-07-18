@@ -867,6 +867,20 @@ pub fn zeros(comptime T: type, allocator: Allocator, shape: []const usize) !Tens
     };
 }
 
+/// Checks if the given tensor is a square tensor
+///
+/// This function examines wheather the tensor has equal dimensions
+///
+/// - Parameters:
+///     - T: The type of the elements in the tensor
+///     - tensor: A pointer to the tensor to be modified.
+///
+/// - Returns:
+///     a boolean wheather or not the tensor's dimensions are equal
+pub fn isSquare(comptime T: type, tensor: *Tensor(T)) !bool {
+    return tensor.shape[0] == tensor.shape[1];
+}
+
 // ----------------------- Safety Checks ----------------------------
 
 /// Calculate the index in a flattened array from n-dimensional coordinates.
