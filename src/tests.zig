@@ -55,6 +55,26 @@ test "tensor basic operations" {
     }
 }
 
+test "tensor is square" {
+    const allocator = testing.allocator;
+
+    //Case 1
+    var tensor1 = try Tensor(f32).init(allocator, &[_]usize{ 2, 2 });
+    defer tensor1.deinit();
+    tensor1.fill(2.0);
+
+    const is_square = try ops.isSquare(f32, &tensor1);
+    try testing.expectEqual(true, is_square);
+
+    //Case 2
+    var tensor2 = try Tensor(f32).init(allocator, &[_]usize{ 2, 4 });
+    defer tensor2.deinit();
+    tensor2.fill(4.0);
+
+    const not_square = try ops.isSquare(f32, &tensor2);
+    try testing.expectEqual(false, not_square);
+}
+
 test "tensor element-wise operations" {
     const allocator = testing.allocator;
 
@@ -2991,7 +3011,7 @@ test "matmul numerical stability" {
 test "sumAxis - i32 sum along axis 0" {
     const allocator = testing.allocator;
 
-    var t = try Tensor(i32).init(allocator, &[_]usize {3, 3});
+    var t = try Tensor(i32).init(allocator, &[_]usize{ 3, 3 });
     defer t.deinit();
 
     t.data[0] = 1;
@@ -3009,7 +3029,7 @@ test "sumAxis - i32 sum along axis 0" {
     var sum = try t.sumAlongAxis(0);
     defer sum.deinit();
 
-    try testing.expectEqualSlices(usize, &[_]usize {3}, sum.shape);
+    try testing.expectEqualSlices(usize, &[_]usize{3}, sum.shape);
     try testing.expect(sum.data[0] == 12);
     try testing.expect(sum.data[1] == 15);
     try testing.expect(sum.data[2] == 18);
@@ -3018,7 +3038,7 @@ test "sumAxis - i32 sum along axis 0" {
 test "sumAxis - i32 sum along axis 1" {
     const allocator = testing.allocator;
 
-    var t = try Tensor(i32).init(allocator, &[_]usize {3, 3});
+    var t = try Tensor(i32).init(allocator, &[_]usize{ 3, 3 });
     defer t.deinit();
 
     t.data[0] = 1;
@@ -3036,7 +3056,7 @@ test "sumAxis - i32 sum along axis 1" {
     var sum = try t.sumAlongAxis(1);
     defer sum.deinit();
 
-    try testing.expectEqualSlices(usize, &[_]usize {3}, sum.shape);
+    try testing.expectEqualSlices(usize, &[_]usize{3}, sum.shape);
     try testing.expect(sum.data[0] == 6);
     try testing.expect(sum.data[1] == 15);
     try testing.expect(sum.data[2] == 24);
@@ -3045,7 +3065,7 @@ test "sumAxis - i32 sum along axis 1" {
 test "sumAxis - f32 sum along axis 0" {
     const allocator = testing.allocator;
 
-    var t = try Tensor(f32).init(allocator, &[_]usize {3, 3});
+    var t = try Tensor(f32).init(allocator, &[_]usize{ 3, 3 });
     defer t.deinit();
 
     t.data[0] = 1.5;
@@ -3063,7 +3083,7 @@ test "sumAxis - f32 sum along axis 0" {
     var sum = try t.sumAlongAxis(0);
     defer sum.deinit();
 
-    try testing.expectEqualSlices(usize, &[_]usize {3}, sum.shape);
+    try testing.expectEqualSlices(usize, &[_]usize{3}, sum.shape);
     try testing.expect(sum.data[0] == 13.5);
     try testing.expect(sum.data[1] == 15);
     try testing.expect(sum.data[2] == 18);
@@ -3072,7 +3092,7 @@ test "sumAxis - f32 sum along axis 0" {
 test "sumAxis - f32 sum along axis 1" {
     const allocator = testing.allocator;
 
-    var t = try Tensor(f32).init(allocator, &[_]usize {3, 3});
+    var t = try Tensor(f32).init(allocator, &[_]usize{ 3, 3 });
     defer t.deinit();
 
     t.data[0] = 1.5;
@@ -3090,7 +3110,7 @@ test "sumAxis - f32 sum along axis 1" {
     var sum = try t.sumAlongAxis(1);
     defer sum.deinit();
 
-    try testing.expectEqualSlices(usize, &[_]usize {3}, sum.shape);
+    try testing.expectEqualSlices(usize, &[_]usize{3}, sum.shape);
     try testing.expect(sum.data[0] == 6.5);
     try testing.expect(sum.data[1] == 15.5);
     try testing.expect(sum.data[2] == 24.5);
@@ -3099,7 +3119,7 @@ test "sumAxis - f32 sum along axis 1" {
 test "sumAxis - sum uneven tensor on axis 0" {
     const allocator = testing.allocator;
 
-    var t = try Tensor(i32).init(allocator, &[_]usize {4, 3});
+    var t = try Tensor(i32).init(allocator, &[_]usize{ 4, 3 });
     defer t.deinit();
 
     t.fill(1);
@@ -3107,7 +3127,7 @@ test "sumAxis - sum uneven tensor on axis 0" {
     var sum = try t.sumAlongAxis(0);
     defer sum.deinit();
 
-    try testing.expectEqualSlices(usize, &[_]usize {3}, sum.shape);
+    try testing.expectEqualSlices(usize, &[_]usize{3}, sum.shape);
     try testing.expect(sum.data[0] == 4);
     try testing.expect(sum.data[1] == 4);
     try testing.expect(sum.data[2] == 4);
@@ -3116,7 +3136,7 @@ test "sumAxis - sum uneven tensor on axis 0" {
 test "sumAxis - sum uneven tensor on axis 1" {
     const allocator = testing.allocator;
 
-    var t = try Tensor(i32).init(allocator, &[_]usize {4, 3});
+    var t = try Tensor(i32).init(allocator, &[_]usize{ 4, 3 });
     defer t.deinit();
 
     t.fill(1);
@@ -3124,8 +3144,7 @@ test "sumAxis - sum uneven tensor on axis 1" {
     var sum = try t.sumAlongAxis(1);
     defer sum.deinit();
 
-
-    try testing.expectEqualSlices(usize, &[_]usize {4}, sum.shape);
+    try testing.expectEqualSlices(usize, &[_]usize{4}, sum.shape);
     try testing.expect(sum.data[0] == 3);
     try testing.expect(sum.data[1] == 3);
     try testing.expect(sum.data[2] == 3);
@@ -3135,7 +3154,7 @@ test "sumAxis - sum uneven tensor on axis 1" {
 test "sumAxis - sum 3d tesor on axis 0" {
     const allocator = testing.allocator;
 
-    var t = try Tensor(i32).init(allocator, &[_]usize {2, 3, 3});
+    var t = try Tensor(i32).init(allocator, &[_]usize{ 2, 3, 3 });
     defer t.deinit();
 
     t.fill(1);
@@ -3143,8 +3162,7 @@ test "sumAxis - sum 3d tesor on axis 0" {
     var sum = try t.sumAlongAxis(0);
     defer sum.deinit();
 
-
-    try testing.expectEqualSlices(usize, &[_]usize {3,3}, sum.shape);
+    try testing.expectEqualSlices(usize, &[_]usize{ 3, 3 }, sum.shape);
     for (sum.data) |value| {
         try testing.expect(value == 2);
     }
@@ -3153,7 +3171,7 @@ test "sumAxis - sum 3d tesor on axis 0" {
 test "sumAxis - sum 3d tesor on axis 1" {
     const allocator = testing.allocator;
 
-    var t = try Tensor(i32).init(allocator, &[_]usize {2, 3, 3});
+    var t = try Tensor(i32).init(allocator, &[_]usize{ 2, 3, 3 });
     defer t.deinit();
 
     t.fill(1);
@@ -3161,7 +3179,7 @@ test "sumAxis - sum 3d tesor on axis 1" {
     var sum = try t.sumAlongAxis(1);
     defer sum.deinit();
 
-    try testing.expectEqualSlices(usize, &[_]usize {2,3}, sum.shape);
+    try testing.expectEqualSlices(usize, &[_]usize{ 2, 3 }, sum.shape);
     for (sum.data) |value| {
         try testing.expect(value == 3);
     }
@@ -3170,7 +3188,7 @@ test "sumAxis - sum 3d tesor on axis 1" {
 test "sumAxis - sum 3d tesor on axis 2" {
     const allocator = testing.allocator;
 
-    var t = try Tensor(i32).init(allocator, &[_]usize {2, 3, 3});
+    var t = try Tensor(i32).init(allocator, &[_]usize{ 2, 3, 3 });
     defer t.deinit();
 
     t.fill(1);
@@ -3178,12 +3196,8 @@ test "sumAxis - sum 3d tesor on axis 2" {
     var sum = try t.sumAlongAxis(2);
     defer sum.deinit();
 
-
-    try testing.expectEqualSlices(usize, &[_]usize {2,3}, sum.shape);
+    try testing.expectEqualSlices(usize, &[_]usize{ 2, 3 }, sum.shape);
     for (sum.data) |value| {
         try testing.expect(value == 3);
     }
-
 }
-
-
