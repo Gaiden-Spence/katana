@@ -61,7 +61,6 @@ test "tensor is square" {
     //Case 1
     var tensor1 = try Tensor(f32).init(allocator, &[_]usize{ 2, 2 });
     defer tensor1.deinit();
-    tensor1.fill(2.0);
 
     const is_square = try ops.isSquare(f32, &tensor1);
     try testing.expectEqual(true, is_square);
@@ -69,10 +68,16 @@ test "tensor is square" {
     //Case 2
     var tensor2 = try Tensor(f32).init(allocator, &[_]usize{ 2, 4 });
     defer tensor2.deinit();
-    tensor2.fill(4.0);
 
     const not_square = try ops.isSquare(f32, &tensor2);
     try testing.expectEqual(false, not_square);
+
+    //Case 3
+    var tensor3 = try Tensor(f32).init(allocator, &[_]usize{ 3, 3, 3 });
+    defer tensor3.deinit();
+
+    const is_square_3d = try ops.isSquare(f32, &tensor3);
+    try testing.expectEqual(true, is_square_3d);
 }
 
 test "tensor element-wise operations" {
