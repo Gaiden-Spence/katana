@@ -878,14 +878,12 @@ pub fn zeros(comptime T: type, allocator: Allocator, shape: []const usize) !Tens
 /// - Returns:
 ///     a boolean wheather or not the tensor's dimensions are equal
 pub fn isSquare(comptime T: type, tensor: *Tensor(T)) !bool {
-    var prev_dim = tensor.shape[0];
+    const first_dim = tensor.shape[0];
 
     for (tensor.shape) |dim| {
-        const curr_dim = dim;
-        if (curr_dim != prev_dim) {
+        if (first_dim != dim) {
             return false;
         }
-        prev_dim = curr_dim;
     }
 
     return true;
