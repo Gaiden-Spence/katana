@@ -10,6 +10,7 @@ const builtin = @import("builtin");
 const atomic = std.atomic;
 const expectEqual = testing.expectEqual;
 const expectError = testing.expectError;
+const helper = @import("helper.zig");
 
 // --- Constants ---
 const max_items_per_row = 6; // Number of elements to show per row
@@ -1797,6 +1798,113 @@ pub fn outer(comptime T: type, tensor: Tensor(T), other: Tensor(T)) !Tensor(T) {
 
     return result;
 }
+/// This function computes percentiles of a tensor
+///
+/// Gathers elements of the reduced the matrix based on the axis value and performs percentile calculations
+///
+/// # Parameters
+/// - `T`: The type of the elements in the tensors.
+/// - `allocator`: The allocator to use for memory allocation
+/// - `tensor`: a pointer to the tensor to be modified
+/// - `pct` u8: what percentile you want to calculate the tensor for
+/// - `axis`: dimension you want remove from the tensor
+///
+/// Errors:
+/// - Returns an invalid percentile error if the percentile is over 100
+/// - Returns an error if the error if memory allocation fails
+/// - Returns an error if axis is null and there are real numbers
+/// - Returns an error if the axis is greater than the shape of the tensor
+///
+/// Returns:
+/// - A `Tensor(T)` instance with percentile calculations
+///
+/// # Notes
+/// - This function makes a new array based on stride calculation and the reduced dimensions
+/// - Then sorts the array out for percentile calculation and adds them to the new tensor
+pub fn percentile(comptime T: type, allocator: Allocator, tensor: *Tensor(T), pct: u8, axis: ?usize) !Tensor(T) {
+    if (pct > 100) {
+        return error.InvalidPercentile;
+    }
+
+    var pct_list = ArrayList(T).init(allocator);
+    defer pct_list.deinit();
+
+    if (axis == null) {
+        for (tensor.data) |i| {
+            if (std.math.isFinite(i)) {
+                try pct_list.append(i);
+            }
+        }
+
+        if (pct_list.items.len == 0) {
+            return error.EmptyArray;
+        }
+
+        std.mem.sort(T, pct_list.items, {}, std.sort.asc(T));
+        var pct_tensor = try Tensor(T).init(allocator, &[_]usize{1});
+
+        pct_tensor.data[0] = try percentile_calculation(T, pct_list.items, pct);
+        return pct_tensor;
+    } else {
+        if (axis != null and axis.? > tensor.shape.len) {
+            return error.IncorrectAxis;
+        }
+
+        const result_shape = try allocator.alloc(usize, tensor.shape.len - 1);
+        defer allocator.free(result_shape);
+
+        //reduce new tensor based on axis
+        var res_idx: usize = 0;
+        for (0..tensor.shape.len) |i| {
+            if (i != axis) {
+                result_shape[res_idx] = tensor.shape[i];
+                res_idx += 1;
+            }
+        }
+        const axis_unwrapped = axis.?;
+        var pct_tensor = try Tensor(T).init(allocator, result_shape);
+
+        //Calculate the size of of new tensor, how many elements for reduced tensor, and stride size
+        const result_size = helper.product(tensor.shape[0..axis_unwrapped]) * helper.product(tensor.shape[axis_unwrapped + 1 ..]);
+        const axis_size = tensor.shape[axis_unwrapped];
+        const stride = helper.product(tensor.shape[axis_unwrapped + 1 ..]);
+
+        //Gather new inner index
+        for (0..result_size) |i| {
+            const inner_index = i / stride * axis_size * stride + i % stride;
+
+            //Gather elements from original tensor based on the axis
+            pct_list.clearRetainingCapacity();
+            for (0..axis_size) |n| {
+                const value = tensor.data[inner_index + n * stride];
+                if (std.math.isFinite(value)) {
+                    try pct_list.append(value);
+                }
+            }
+
+            //Compute the percentile function and update tensor
+            std.mem.sort(T, pct_list.items, {}, std.sort.asc(T));
+            pct_tensor.data[i] = try percentile_calculation(T, pct_list.items, pct);
+        }
+
+        return pct_tensor;
+    }
+}
+
+//Helper function to compute the new tensor function
+fn percentile_calculation(comptime T: type, values: []const T, percent: u8) !T {
+    const index = (@as(f64, @floatFromInt(percent)) / 100.0) * @as(f64, @floatFromInt(values.len - 1));
+
+    if (index == @floor(index)) {
+        return values[@as(usize, @intFromFloat(index))];
+    } else {
+        const lower = @as(usize, @intFromFloat(@floor(index)));
+        const upper = lower + 1;
+        const frac = index - @floor(index);
+
+        return values[lower] + ((values[upper] - values[lower]) * @as(T, @floatCast(frac)));
+    }
+}
 
 // ------------------------ Machine Learning --------------------------------------
 
@@ -1961,6 +2069,7 @@ const FreqsError = error{
     EndTooSmall,
     ThetaTooSmall,
     InvalidShape,
+    InvalidPercentile,
 
     // Computation errors
     ComputationOverflow,
