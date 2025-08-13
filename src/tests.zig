@@ -1267,6 +1267,71 @@ test "Tensor outer product" {
     }
 }
 
+test "Percentile calculations" {
+    const allocator = testing.allocator;
+
+    // Test 1: Check for percentile error
+    var t = try Tensor(f32).init(allocator, &[_]usize{4});
+    defer t.deinit();
+
+    t.data[0] = 1.0;
+    t.data[1] = 2.0;
+    t.data[2] = std.math.nan(f32);
+    t.data[3] = 3.0;
+
+    try testing.expectError(error.InvalidPercentile, ops.percentile(f32, allocator, &t, 101, null));
+
+    //Test 2: Check if tensor has any valid values for percentile calculation
+    var t2 = try Tensor(f32).init(allocator, &[_]usize{3});
+    defer t2.deinit();
+
+    t2.data[0] = std.math.nan(f32);
+    t2.data[1] = std.math.inf(f32);
+    t2.data[2] = -std.math.inf(f32);
+
+    try testing.expectError(error.EmptyArray, ops.percentile(f32, allocator, &t2, 50, null));
+
+    //Test 3: Base case where the axis null and will take the full array
+    var t3 = try Tensor(f32).init(allocator, &[_]usize{4});
+    defer t3.deinit();
+
+    t3.data[0] = 1.0;
+    t3.data[1] = 2.0;
+    t3.data[2] = std.math.nan(f32);
+    t3.data[3] = 3.0;
+
+    var res_base = try ops.percentile(f32, allocator, &t3, 50, null);
+    defer res_base.deinit();
+
+    try testing.expectEqual(2.0, res_base.data[0]);
+
+    //Test 4: Case where there is incorrect axis
+    var t4 = try Tensor(f32).init(allocator, &[_]usize{ 3, 3 });
+    defer t4.deinit();
+
+    for (t4.data, 0..) |*val, i| {
+        val.* = @floatFromInt(i);
+    }
+
+    try testing.expectError(error.IncorrectAxis, ops.percentile(f32, allocator, &t4, 50, 4));
+
+    //Test 5: Full case with axis functionality
+    var t5 = try Tensor(f32).init(allocator, &[_]usize{ 3, 3, 3, 3 });
+    defer t5.deinit();
+
+    for (t5.data, 0..) |*val, i| {
+        val.* = @floatFromInt(i);
+    }
+
+    var res_final = try ops.percentile(f32, allocator, &t5, 50, 0);
+    defer res_final.deinit();
+    const test_res = [27]f32{ 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53 };
+
+    for (res_final.data, test_res) |num1, num2| {
+        try testing.expectEqual(num1, num2);
+    }
+}
+
 test "Tensor stability checks" {
     const allocator = testing.allocator;
 
