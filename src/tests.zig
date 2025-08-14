@@ -1323,12 +1323,28 @@ test "Percentile calculations" {
         val.* = @floatFromInt(i);
     }
 
-    var res_final = try ops.percentile(f32, allocator, &t5, 50, 0);
-    defer res_final.deinit();
+    var res_axe = try ops.percentile(f32, allocator, &t5, 50, 0);
+    defer res_axe.deinit();
     const test_res = [27]f32{ 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53 };
 
-    for (res_final.data, test_res) |num1, num2| {
+    for (res_axe.data, test_res) |num1, num2| {
         try testing.expectEqual(num1, num2);
+    }
+
+    //Test 6: Full case with negative axis functionality
+    var t6 = try Tensor(f32).init(allocator, &[_]usize{ 3, 3, 3, 3 });
+    defer t6.deinit();
+
+    for (t6.data, 0..) |*val, i| {
+        val.* = @floatFromInt(i);
+    }
+
+    var neg_axis = try ops.percentile(f32, allocator, &t6, 50, -1);
+    defer neg_axis.deinit();
+    const test_res_neg_axis = [27]f32{ 1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34, 37, 40, 43, 46, 49, 52, 55, 58, 61, 64, 67, 70, 73, 76, 79 };
+
+    for (neg_axis.data, test_res_neg_axis) |num1, num2| {
+        try testing.expect(num1, num2);
     }
 }
 
