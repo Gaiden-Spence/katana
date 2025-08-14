@@ -1798,6 +1798,7 @@ pub fn outer(comptime T: type, tensor: Tensor(T), other: Tensor(T)) !Tensor(T) {
 
     return result;
 }
+
 /// This function computes percentiles of a tensor
 ///
 /// Gathers elements of the reduced the matrix based on the axis value and performs percentile calculations
@@ -1812,8 +1813,8 @@ pub fn outer(comptime T: type, tensor: Tensor(T), other: Tensor(T)) !Tensor(T) {
 /// Errors:
 /// - Returns an invalid percentile error if the percentile is over 100
 /// - Returns an error if the error if memory allocation fails
-/// - Returns an error if axis is null and there are real numbers
-/// - Returns an error if the axis is greater than the shape of the tensor
+/// - Returns an error if axis is null and there are no real numbers
+/// - Returns an error if the axis is greater than or equal to the shape of the tensor
 ///
 /// Returns:
 /// - A `Tensor(T)` instance with percentile calculations
@@ -1821,7 +1822,9 @@ pub fn outer(comptime T: type, tensor: Tensor(T), other: Tensor(T)) !Tensor(T) {
 /// # Notes
 /// - This function makes a new array based on stride calculation and the reduced dimensions
 /// - Then sorts the array out for percentile calculation and adds them to the new tensor
-pub fn percentile(comptime T: type, allocator: Allocator, tensor: *Tensor(T), pct: u8, axis: ?usize) !Tensor(T) {
+/// - If null is a parameter this function will return a 1 dimension array
+/// - This does not handle multiple axis'
+pub fn percentile(comptime T: type, allocator: Allocator, tensor: *Tensor(T), pct: u8, axis: ?isize) !Tensor(T) {
     if (pct > 100) {
         return error.InvalidPercentile;
     }
@@ -1846,7 +1849,14 @@ pub fn percentile(comptime T: type, allocator: Allocator, tensor: *Tensor(T), pc
         pct_tensor.data[0] = try percentile_calculation(T, pct_list.items, pct);
         return pct_tensor;
     } else {
-        if (axis != null and axis.? > tensor.shape.len) {
+
+        //Negative Axis conversion
+        const normalized_axis = if (axis.? < 0)
+            @as(usize, @intCast(@as(isize, @intCast(tensor.shape.len)) + axis.?))
+        else
+            @as(usize, @intCast(axis.?));
+
+        if (axis != null and normalized_axis >= tensor.shape.len) {
             return error.IncorrectAxis;
         }
 
@@ -1861,13 +1871,12 @@ pub fn percentile(comptime T: type, allocator: Allocator, tensor: *Tensor(T), pc
                 res_idx += 1;
             }
         }
-        const axis_unwrapped = axis.?;
         var pct_tensor = try Tensor(T).init(allocator, result_shape);
 
         //Calculate the size of of new tensor, how many elements for reduced tensor, and stride size
-        const result_size = helper.product(tensor.shape[0..axis_unwrapped]) * helper.product(tensor.shape[axis_unwrapped + 1 ..]);
-        const axis_size = tensor.shape[axis_unwrapped];
-        const stride = helper.product(tensor.shape[axis_unwrapped + 1 ..]);
+        const result_size = helper.product(tensor.shape[0..normalized_axis]) * helper.product(tensor.shape[normalized_axis + 1 ..]);
+        const axis_size = tensor.shape[normalized_axis];
+        const stride = helper.product(tensor.shape[normalized_axis + 1 ..]);
 
         //Gather new inner index
         for (0..result_size) |i| {
