@@ -892,6 +892,22 @@ pub fn isSquare(comptime T: type, tensor: *Tensor(T)) !bool {
     return true;
 }
 
+pub fn sqrt(comptime T: type, tensor: *Tensor(T)) !void {
+    for (tensor.data, 0..) |_, i| {
+        tensor.data[i] = @sqrt(tensor.data[i]);
+    }
+}
+
+pub fn power(comptime T: type, tensor: *Tensor(T), other: Tensor(T)) !void {
+    if (tensor.shape.len != other.shape.len) {
+        return error.ShapeMismatch;
+    }
+
+    for (tensor.data, 0..) |_, i| {
+        tensor.data[i] = std.math.pow(T, tensor.data[i], other.tensor[i]);
+    }
+}
+
 // ----------------------- Safety Checks ----------------------------
 
 /// Calculate the index in a flattened array from n-dimensional coordinates.
