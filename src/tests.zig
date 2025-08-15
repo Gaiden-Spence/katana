@@ -105,6 +105,11 @@ test "tensor element-wise operations" {
     for (tensor1.data) |value| {
         try testing.expectEqual(@as(f32, 6.0), value);
     }
+
+    try ops.sqrt(f32, &tensor1);
+    for (tensor1.data) |value| {
+        try testing.expectEqual(@as(f32, @sqrt(6.0)), value);
+    }
 }
 
 test "tensor reshape" {
