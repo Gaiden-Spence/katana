@@ -908,6 +908,12 @@ pub fn power(comptime T: type, tensor: *Tensor(T), other: Tensor(T)) !void {
     }
 }
 
+pub fn exp(comptime T: type, tensor: *Tensor(T)) !void {
+    for (tensor.data, 0..) |_, i| {
+        tensor.data[i] = std.math.exp(tensor.data[i]);
+    }
+}
+
 // ----------------------- Safety Checks ----------------------------
 
 /// Calculate the index in a flattened array from n-dimensional coordinates.
