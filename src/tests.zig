@@ -1344,7 +1344,7 @@ test "Percentile calculations" {
     const test_res_neg_axis = [27]f32{ 1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34, 37, 40, 43, 46, 49, 52, 55, 58, 61, 64, 67, 70, 73, 76, 79 };
 
     for (neg_axis.data, test_res_neg_axis) |num1, num2| {
-        try testing.expect(num1, num2);
+        try testing.expectEqual(num1, num2);
     }
 }
 
