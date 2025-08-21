@@ -892,12 +892,43 @@ pub fn isSquare(comptime T: type, tensor: *Tensor(T)) !bool {
     return true;
 }
 
+///Takes the square root of the tensors elements
+///
+/// This function performs an element wise operation for the and
+/// calculates the square root of each function
+///
+/// # Parameters:
+/// - `T`: The type of elements in the tensors
+/// - `tensor`: A pointer to the tensor to which the elements will be changed
+///
+/// # Returns:
+/// None
 pub fn sqrt(comptime T: type, tensor: *Tensor(T)) !void {
     for (tensor.data, 0..) |_, i| {
         tensor.data[i] = @sqrt(tensor.data[i]);
     }
 }
 
+///Takes the tensor raised to the power of other tensor
+///
+/// This fucntion performs the elementwise operation of the first tensor
+/// raised to the power of the second tensor and stores those new values in the
+/// original tensor.
+///
+/// # Parameters:
+/// - `T`: the type of elements in the tensor
+/// - `tensor`: pointer to the original tensro
+/// - `other`: the other tensor whose values will be used as the exponents
+///
+/// # Errors:
+/// - `ShapeMismatch`:
+///
+/// Returns:
+/// None
+///
+/// # Notes
+/// - The function assumes that the `tensor` and `other` have the same shape.
+/// - The function performs an in-place modification of the `tensor`.
 pub fn power(comptime T: type, tensor: *Tensor(T), other: Tensor(T)) !void {
     if (tensor.shape.len != other.shape.len) {
         return error.ShapeMismatch;
@@ -908,9 +939,45 @@ pub fn power(comptime T: type, tensor: *Tensor(T), other: Tensor(T)) !void {
     }
 }
 
+///Takes the exponential of the tensors elements
+///
+/// This function performs an element wise operation for the tensor and
+/// calculates the exponential of each function
+///
+/// # Parameters:
+/// - `T`: The type of elements in the tensors
+/// - `tensor`: A pointer to the tensor to which the elements will be changed
+///
+/// # Returns:
+/// None
 pub fn exp(comptime T: type, tensor: *Tensor(T)) !void {
     for (tensor.data, 0..) |_, i| {
         tensor.data[i] = std.math.exp(tensor.data[i]);
+    }
+}
+
+
+///Takes the exponential of the tensors elements
+///
+/// This function performs an element wise operation for the tensor and
+/// calculates the exponential of each function
+///
+/// # Parameters:
+/// - `T`: The type of elements in the tensors
+/// - `tensor`: A pointer to the tensor to which the elements will be changed
+///
+/// # Returns:
+/// None
+pub fn  log2(comptime T: type, tensor: *Tensor(T)) !void{   
+    for (tensor.data, 0..) |_,i|{
+        tensor.data[i] = std.math.log2(tensor.data[i]);
+    }
+
+}
+
+pub fn log10(comptime T: type, tensor: *Tensor(T)) !void{
+    for (tensor.data, 0..) |_,i|{
+        tensor.data[i] = std.math.log10(tensor.data[i]);
     }
 }
 
