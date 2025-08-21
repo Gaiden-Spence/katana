@@ -105,10 +105,18 @@ test "tensor element-wise operations" {
     for (tensor1.data) |value| {
         try testing.expectEqual(@as(f32, 6.0), value);
     }
+}
+
+test "tensor element-wise operations cont" {
+    const allocator = testing.allocator;
+
+    var tensor1 = try Tensor(f32).init(allocator, &[_]usize{ 2, 2 });
+    defer tensor1.deinit();
+    tensor1.fill(9.0);
 
     try ops.sqrt(f32, &tensor1);
     for (tensor1.data) |value| {
-        try testing.expectEqual(@as(f32, @sqrt(6.0)), value);
+        try testing.expectEqual(@as(f32, 3.0), value);
     }
 }
 
