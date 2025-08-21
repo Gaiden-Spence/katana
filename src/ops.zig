@@ -1806,7 +1806,7 @@ pub fn outer(comptime T: type, tensor: Tensor(T), other: Tensor(T)) !Tensor(T) {
 /// # Parameters
 /// - `T`: The type of the elements in the tensors.
 /// - `allocator`: The allocator to use for memory allocation
-/// - `tensor`: a pointer to the tensor to be modified
+/// - `tensor`: original tensor to be modified
 /// - `pct` u8: what percentile you want to calculate the tensor for
 /// - `axis`: dimension you want remove from the tensor
 ///
@@ -1824,7 +1824,7 @@ pub fn outer(comptime T: type, tensor: Tensor(T), other: Tensor(T)) !Tensor(T) {
 /// - Then sorts the array out for percentile calculation and adds them to the new tensor
 /// - If null is a parameter this function will return a 1 dimension array
 /// - This does not handle multiple axis'
-pub fn percentile(comptime T: type, allocator: Allocator, tensor: *Tensor(T), pct: u8, axis: ?isize) !Tensor(T) {
+pub fn percentile(comptime T: type, allocator: Allocator, tensor: Tensor(T), pct: u8, axis: ?isize) !Tensor(T) {
     if (pct > 100) {
         return error.InvalidPercentile;
     }
