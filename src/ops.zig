@@ -1866,7 +1866,7 @@ pub fn percentile(comptime T: type, allocator: Allocator, tensor: *Tensor(T), pc
         //reduce new tensor based on axis
         var res_idx: usize = 0;
         for (0..tensor.shape.len) |i| {
-            if (i != axis) {
+            if (i != normalized_axis) {
                 result_shape[res_idx] = tensor.shape[i];
                 res_idx += 1;
             }
