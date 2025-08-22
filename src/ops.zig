@@ -874,6 +874,9 @@ pub fn zeros(comptime T: type, allocator: Allocator, shape: []const usize) !Tens
 /// - Parameters:
 ///     - T: The type of the elements in the tensor
 ///     - tensor: the tensor that is being called.
+/// 
+/// -Error:
+///     - Returns an error if there is some information instability.
 ///
 /// - Returns:
 ///     a boolean wheather or not the tensor's dimensions are equal
