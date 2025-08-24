@@ -892,7 +892,7 @@ pub fn isSquare(comptime T: type, tensor: *Tensor(T)) !bool {
     return true;
 }
 
-///Takes the square root of the tensors elements
+/// Takes the square root of the tensors elements
 ///
 /// This function performs an element wise operation for the and
 /// calculates the square root of each function
@@ -903,13 +903,16 @@ pub fn isSquare(comptime T: type, tensor: *Tensor(T)) !bool {
 ///
 /// # Returns:
 /// None
+///
+/// # Notes:
+/// - Negative values will be turned into NaN
 pub fn sqrt(comptime T: type, tensor: *Tensor(T)) !void {
     for (tensor.data, 0..) |_, i| {
         tensor.data[i] = @sqrt(tensor.data[i]);
     }
 }
 
-///Takes the tensor raised to the power of other tensor
+/// Takes the tensor raised to the power of other tensor
 ///
 /// This fucntion performs the elementwise operation of the first tensor
 /// raised to the power of the second tensor and stores those new values in the
@@ -917,7 +920,7 @@ pub fn sqrt(comptime T: type, tensor: *Tensor(T)) !void {
 ///
 /// # Parameters:
 /// - `T`: the type of elements in the tensor
-/// - `tensor`: pointer to the original tensro
+/// - `tensor`: pointer to the original tensor
 /// - `other`: the other tensor whose values will be used as the exponents
 ///
 /// # Errors:
@@ -927,7 +930,6 @@ pub fn sqrt(comptime T: type, tensor: *Tensor(T)) !void {
 /// None
 ///
 /// # Notes
-/// - The function assumes that the `tensor` and `other` have the same shape.
 /// - The function performs an in-place modification of the `tensor`.
 pub fn power(comptime T: type, tensor: *Tensor(T), other: Tensor(T)) !void {
     if (tensor.shape.len != other.shape.len) {
@@ -935,11 +937,11 @@ pub fn power(comptime T: type, tensor: *Tensor(T), other: Tensor(T)) !void {
     }
 
     for (tensor.data, 0..) |_, i| {
-        tensor.data[i] = std.math.pow(T, tensor.data[i], other.tensor[i]);
+        tensor.data[i] = std.math.pow(T, tensor.data[i], other.data[i]);
     }
 }
 
-///Takes the exponential of the tensors elements
+/// Takes the exponential of the tensors elements
 ///
 /// This function performs an element wise operation for the tensor and
 /// calculates the exponential of each function
@@ -950,14 +952,16 @@ pub fn power(comptime T: type, tensor: *Tensor(T), other: Tensor(T)) !void {
 ///
 /// # Returns:
 /// None
+///
+/// # Notes
+/// - The function performs an in-place modification of the `tensor`.
 pub fn exp(comptime T: type, tensor: *Tensor(T)) !void {
     for (tensor.data, 0..) |_, i| {
         tensor.data[i] = std.math.exp(tensor.data[i]);
     }
 }
 
-
-///Takes the exponential of the tensors elements
+/// Takes the log base 2 of a tensors elements
 ///
 /// This function performs an element wise operation for the tensor and
 /// calculates the exponential of each function
@@ -968,16 +972,138 @@ pub fn exp(comptime T: type, tensor: *Tensor(T)) !void {
 ///
 /// # Returns:
 /// None
-pub fn  log2(comptime T: type, tensor: *Tensor(T)) !void{   
-    for (tensor.data, 0..) |_,i|{
+/// - The function performs an in-place modification of the `tensor`.
+pub fn log2(comptime T: type, tensor: *Tensor(T)) !void {
+    for (tensor.data, 0..) |_, i| {
         tensor.data[i] = std.math.log2(tensor.data[i]);
     }
-
 }
 
-pub fn log10(comptime T: type, tensor: *Tensor(T)) !void{
-    for (tensor.data, 0..) |_,i|{
+/// Takes the log base 10 of a tensors elements
+///
+/// This function performs an element wise operation for the tensor and
+/// calculates the exponential of each function
+///
+/// # Parameters:
+/// - `T`: The type of elements in the tensors
+/// - `tensor`: A pointer to the tensor to which the elements will be changed
+///
+/// # Returns:
+/// None
+///
+/// # Notes
+/// - The function performs an in-place modification of the `tensor`.
+pub fn log10(comptime T: type, tensor: *Tensor(T)) !void {
+    for (tensor.data, 0..) |_, i| {
         tensor.data[i] = std.math.log10(tensor.data[i]);
+    }
+}
+
+/// Finds the sign of elements sign value
+///
+/// This function performs an element wise operation for the tensor and
+/// calculates the sign of each tensor element
+///
+/// # Parameters:
+/// - `T`: The type of elements in the tensors
+/// - `tensor`: A pointer to the tensor to which the elements will be changed
+///
+/// # Returns:
+/// None
+///
+/// # Notes:
+/// - The function performs an in-place modification of the `tensor`.
+/// - If there is a NaN value this function will return that NaN
+/// - pos inf will return 1 and neg inf will return -1
+pub fn sign(comptime T: type, tensor: *Tensor(T)) !void {
+    for (tensor.data, 0..) |_, i| {
+        tensor.data[i] = if (tensor.data[i] < 0) -1 else if (tensor.data[i] > 0) 1 else if (tensor.data[i] == std.math.nan(T)) tensor.data[i] else 0;
+    }
+}
+
+/// Rounds the element to the nearest number
+///
+/// This function performs an element wise operation for the tensor and
+/// rounds the element to next number
+///
+/// # Parameters:
+/// - `T`: The type of elements in the tensors
+/// - `tensor`: A pointer to the tensor to which the elements will be changed
+///
+/// # Returns:
+/// None
+///
+/// # Notes:
+/// - The function performs an in-place modification of the `tensor`.
+pub fn round(comptime T: type, tensor: *Tensor(T)) !void {
+    for (tensor.data, 0..) |_, i| {
+        tensor.data[i] = @round(tensor.data[i]);
+    }
+}
+
+/// Rounds down the element in the tensor
+///
+/// This function performs an element wise operation for the tensor and
+/// rounds the element down
+///
+/// # Parameters:
+/// - `T`: The type of elements in the tensors
+/// - `tensor`: A pointer to the tensor to which the elements will be changed
+///
+/// # Returns:
+/// None
+///
+/// # Notes:
+/// - The function performs an in-place modification of the `tensor`.
+pub fn floor(comptime T: type, tensor: *Tensor(T)) !void {
+    for (tensor.data, 0..) |_, i| {
+        tensor.data[i] = @floor(tensor.data[i]);
+    }
+}
+
+/// Rounds up the element in the tensor
+///
+/// This function performs an element wise operation for the tensor and
+/// rounds the element up
+///
+/// # Parameters:
+/// - `T`: The type of elements in the tensors
+/// - `tensor`: A pointer to the tensor to which the elements will be changed
+///
+/// # Returns:
+/// None
+///
+/// # Notes:
+/// - The function performs an in-place modification of the `tensor`.
+pub fn ceil(comptime T: type, tensor: *Tensor(T)) !void {
+    for (tensor.data, 0..) |_, i| {
+        tensor.data[i] = @ceil(tensor.data[i]);
+    }
+}
+
+/// Clips tensor element to specific range
+/// This function performs an element wise operation for the tensor and
+/// rounds the element up
+///
+/// # Parameters:
+/// - `T`: The type of elements in the tensors
+/// - `tensor`: A pointer to the tensor to which the elements will be changed
+/// - `min`: min value that we want to clip
+/// - `max`: max value to clip
+///
+///
+/// # Errors:
+/// This function throws an error if the min value is greater than the max value
+///
+/// # Returns:
+/// None
+pub fn clip(comptime T: type, tensor: *Tensor(T), min: T, max: T) !void {
+    if (min > max) {
+        return error.IndexOutOfBounds;
+    }
+
+    for (tensor.data, 0..) |_, i| {
+        tensor.data[i] = if (tensor.data[i] < min) min else if (tensor.data[i] > max) max else tensor.data[i];
     }
 }
 
