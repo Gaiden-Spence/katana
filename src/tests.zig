@@ -107,17 +107,34 @@ test "tensor element-wise operations" {
     }
 }
 
-test "tensor element-wise operations cont" {
+test "tensor element-wise operations 2" {
     const allocator = testing.allocator;
 
     var tensor1 = try Tensor(f32).init(allocator, &[_]usize{ 2, 2 });
     defer tensor1.deinit();
     tensor1.fill(9.0);
 
+    //Test sqrt function
     try ops.sqrt(f32, &tensor1);
     for (tensor1.data) |value| {
         try testing.expectEqual(@as(f32, 3.0), value);
     }
+
+    var tensor2 = try Tensor(f32).init(allocator, &[_]usize{ 2, 2 });
+    defer tensor2.deinit();
+    tensor2.fill(2.0);
+
+    try ops.power(f32, &tensor1, tensor2);
+    for (tensor1.data) |value| {
+        try testing.expectEqual(@as(f32, 9.0), value);
+    }
+
+    try ops.exp(f32, &tensor1);
+    for (tensor1.data) |value| {
+        try testing.expectEqual(@as(f32, std.math.exp(9.0)), value);
+    }
+
+    try ops.
 }
 
 test "tensor reshape" {
