@@ -1822,7 +1822,7 @@ pub fn outer(comptime T: type, tensor: Tensor(T), other: Tensor(T)) !Tensor(T) {
 /// # Notes
 /// - This function makes a new array based on stride calculation and the reduced dimensions
 /// - Then sorts the array out for percentile calculation and adds them to the new tensor
-/// - If null is a parameter this function will return a 1 dimension array
+/// - For axis parameter if argument is null this function will return a 1 element tensor
 /// - This does not handle multiple axis'
 pub fn percentile(comptime T: type, allocator: Allocator, tensor: Tensor(T), pct: u8, axis: ?isize) !Tensor(T) {
     if (pct > 100) {
@@ -1860,10 +1860,11 @@ pub fn percentile(comptime T: type, allocator: Allocator, tensor: Tensor(T), pct
             return error.IncorrectAxis;
         }
 
+        //allocate memory for reduced tensor shape
         const result_shape = try allocator.alloc(usize, tensor.shape.len - 1);
         defer allocator.free(result_shape);
 
-        //reduce new tensor based on axis
+        //make new tensor with the axis reduced
         var res_idx: usize = 0;
         for (0..tensor.shape.len) |i| {
             if (i != normalized_axis) {
