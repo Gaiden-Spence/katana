@@ -120,6 +120,7 @@ test "tensor element-wise operations 2" {
         try testing.expectEqual(@as(f32, 3.0), value);
     }
 
+    //Test Power function
     var tensor2 = try Tensor(f32).init(allocator, &[_]usize{ 2, 2 });
     defer tensor2.deinit();
     tensor2.fill(2.0);
@@ -129,12 +130,71 @@ test "tensor element-wise operations 2" {
         try testing.expectEqual(@as(f32, 9.0), value);
     }
 
+    //Test exponential function
     try ops.exp(f32, &tensor1);
     for (tensor1.data) |value| {
         try testing.expectEqual(@as(f32, std.math.exp(9.0)), value);
     }
 
-    try ops.
+    //Test log base 2 funtion
+    try ops.log2(f32, &tensor1);
+    for (tensor1.data) |value| {
+        try testing.expectEqual(@as(f32, std.math.log2(std.math.exp(9.0))), value);
+    }
+
+    //Test log base 10 function
+    try ops.log10(f32, &tensor1);
+    for (tensor1.data) |value| {
+        try testing.expectEqual(@as(f32, std.math.log10(std.math.log2(std.math.exp(9.0)))), value);
+    }
+
+    //Test sign function
+    try ops.sign(f32, &tensor2);
+    for (tensor2.data) |value| {
+        try testing.expectEqual(@as(f32, 1.0), value);
+    }
+
+    //Test round function
+    var tensor3 = try Tensor(f32).init(allocator, &[_]usize{ 2, 2 });
+    defer tensor3.deinit();
+    tensor3.fill(2.3);
+
+    try ops.round(f32, &tensor3);
+    for (tensor3.data) |value| {
+        try testing.expectEqual(@as(f32, 2.0), value);
+    }
+
+    //Test floor function
+    var tensor4 = try Tensor(f32).init(allocator, &[_]usize{ 2, 2 });
+    defer tensor4.deinit();
+    tensor4.fill(2.7);
+
+    try ops.floor(f32, &tensor4);
+    for (tensor4.data) |value| {
+        try testing.expectEqual(@as(f32, 2.0), value);
+    }
+
+    //Test ceil function
+    var tensor5 = try Tensor(f32).init(allocator, &[_]usize{ 2, 2 });
+    defer tensor5.deinit();
+    tensor5.fill(2.3);
+
+    try ops.ceil(f32, &tensor5);
+    for (tensor5.data) |value| {
+        try testing.expectEqual(@as(f32, 3.0), value);
+    }
+
+    //Test clip function
+    var tensor6 = try Tensor(f32).init(allocator, &[_]usize{ 2, 2 });
+    defer tensor6.deinit();
+    tensor6.fill(2.3);
+
+    try testing.expectError(error.IndexOutOfBounds, ops.clip(f32, &tensor6, 4, 2));
+
+    try ops.clip(f32, &tensor6, 0, 2);
+    for (tensor6.data) |value| {
+        try testing.expectEqual(@as(f32, 2.0), value);
+    }
 }
 
 test "tensor reshape" {
