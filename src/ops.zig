@@ -2130,6 +2130,38 @@ fn percentile_calculation(comptime T: type, values: []const T, percent: u8) !T {
     }
 }
 
+fn lu(comptime T: type, allocator: Allocator, tensor: Tensor(T)) !struct { Tensor(T), Tensor(T), Tensor(T) } {
+    if (try isSquare(f32, tensor) == false) {
+        return error.NotSquare;
+    }
+
+    if (tensor.shape.len > 2) {
+        return error.IncompatibleDimensions;
+    }
+
+    var org_tensor_copy = try Tensor(T).init.allocator(allocator, tensor.shape);
+    defer org_tensor_copy.deinit();
+
+    for (tensor.data, 0..) |value, i| {
+        org_tensor_copy.data[i] = value;
+    }
+}
+
+fn eye(comptime T: type, allocator: Allocator, tensor: Tensor(T), k: ?isize) !Tensor(T){
+    if (tensor.shape.len > 2){
+        return error.IncompatibleDimensions;
+    }
+    new_tensor = try Tensor(T).init(allocator, tensor.shape);
+
+    if (axis == null or k == 0){
+        
+    }
+
+
+
+
+}
+
 // ------------------------ Machine Learning --------------------------------------
 
 /// Applies Layer Normalization to the input tensor.
