@@ -1903,10 +1903,6 @@ pub fn percentile(comptime T: type, allocator: Allocator, tensor: Tensor(T), pct
 fn percentileCalculation(comptime T: type, allocator: Allocator, values: []T, percent: f16) !T {
     const n = values.len;
 
-    if (n == 0) {
-        return error.IndexOutOfBounds;
-    }
-
     if (n == 1) {
         return values[0];
     }
