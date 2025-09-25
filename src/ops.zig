@@ -1824,8 +1824,8 @@ pub fn outer(comptime T: type, tensor: Tensor(T), other: Tensor(T)) !Tensor(T) {
 /// - Then sorts the array out for percentile calculation and adds them to the new tensor
 /// - For axis parameter if argument is null this function will return a 1 element tensor
 /// - This does not handle multiple axis'
-pub fn percentile(comptime T: type, allocator: Allocator, tensor: Tensor(T), pct: u8, axis: ?isize) !Tensor(T) {
-    if (pct > 100) {
+pub fn percentile(comptime T: type, allocator: Allocator, tensor: Tensor(T), pct: f16, axis: ?isize) !Tensor(T) {
+    if (pct < 0 or pct > 100) {
         return error.InvalidPercentile;
     }
 
@@ -1843,10 +1843,9 @@ pub fn percentile(comptime T: type, allocator: Allocator, tensor: Tensor(T), pct
             return error.EmptyArray;
         }
 
-        std.mem.sort(T, pct_list.items, {}, std.sort.asc(T));
         var pct_tensor = try Tensor(T).init(allocator, &[_]usize{1});
 
-        pct_tensor.data[0] = try percentile_calculation(T, pct_list.items, pct);
+        pct_tensor.data[0] = try percentileCalculation(T, allocator, pct_list.items, pct);
         return pct_tensor;
     } else {
 
@@ -1893,8 +1892,7 @@ pub fn percentile(comptime T: type, allocator: Allocator, tensor: Tensor(T), pct
             }
 
             //Compute the percentile function and update tensor
-            std.mem.sort(T, pct_list.items, {}, std.sort.asc(T));
-            pct_tensor.data[i] = try percentile_calculation(T, pct_list.items, pct);
+            pct_tensor.data[i] = try percentileCalculation(T, allocator, pct_list.items, pct);
         }
 
         return pct_tensor;
@@ -1902,17 +1900,86 @@ pub fn percentile(comptime T: type, allocator: Allocator, tensor: Tensor(T), pct
 }
 
 //Helper function to compute the new tensor function
-fn percentile_calculation(comptime T: type, values: []const T, percent: u8) !T {
-    const index = (@as(f64, @floatFromInt(percent)) / 100.0) * @as(f64, @floatFromInt(values.len - 1));
+fn percentileCalculation(comptime T: type, allocator: Allocator, values: []T, percent: f16) !T {
+    const n = values.len;
 
+    if (n == 0) {
+        return error.IndexOutOfBounds;
+    }
+
+    if (n == 1) {
+        return values[0];
+    }
+
+    const index = (@as(f64, percent) / 100.0) * @as(f64, @floatFromInt(values.len - 1));
     if (index == @floor(index)) {
-        return values[@as(usize, @intFromFloat(index))];
-    } else {
-        const lower = @as(usize, @intFromFloat(@floor(index)));
-        const upper = lower + 1;
-        const frac = index - @floor(index);
+        const k = @as(usize, @intFromFloat(index + 1));
+        return try quickSelect(T, allocator, values, k);
+    }
 
-        return values[lower] + ((values[upper] - values[lower]) * @as(T, @floatCast(frac)));
+    const lower_idx = @as(usize, @intFromFloat(@floor(index)));
+    const upper_idx = lower_idx + 1;
+
+    if (upper_idx >= n) {
+        return try quickSelect(T, allocator, values, n - 1);
+    }
+
+    const lower_value = try quickSelect(T, allocator, values, lower_idx + 1);
+
+    const values_copy = try allocator.dupe(T, values);
+    defer allocator.free(values_copy);
+
+    const upper_value = try quickSelect(T, allocator, values_copy, upper_idx + 1);
+    const weight = index - @floor(index);
+
+    const interpolated = @as(f64, @floatCast(lower_value)) * (1 - weight) +
+        @as(f64, @floatCast(upper_value)) * weight;
+
+    return switch (@typeInfo(T)) {
+        .Int => @as(T, @intFromFloat(@round(interpolated))),
+        .Float => @as(T, @floatCast(@round(interpolated))),
+        else => @compileError("Type must be integer or float"),
+    };
+}
+
+fn quickSelect(comptime T: type, allocator: Allocator, arr: []T, k: usize) !T {
+    if (arr.len == 1) {
+        return arr[0];
+    }
+
+    var smaller = ArrayList(T).init(allocator);
+    try smaller.ensureTotalCapacity(arr.len);
+    defer smaller.deinit();
+
+    var equal = ArrayList(T).init(allocator);
+    try equal.ensureTotalCapacity(arr.len);
+    defer equal.deinit();
+
+    var larger = ArrayList(T).init(allocator);
+    try larger.ensureTotalCapacity(arr.len);
+    defer larger.deinit();
+
+    const Rndgen = std.rand.DefaultPrng;
+    var rnd = Rndgen.init(0);
+    const random_index = rnd.random().uintLessThan(usize, arr.len);
+    const pivot = arr[random_index];
+
+    for (arr) |x| {
+        if (x < pivot) {
+            smaller.appendAssumeCapacity(x);
+        } else if (x == pivot) {
+            equal.appendAssumeCapacity(x);
+        } else {
+            larger.appendAssumeCapacity(x);
+        }
+    }
+
+    if (k <= smaller.items.len) {
+        return quickSelect(T, allocator, smaller.items, k);
+    } else if (k <= (smaller.items.len + equal.items.len)) {
+        return pivot;
+    } else {
+        return quickSelect(T, allocator, larger.items, k - smaller.items.len - equal.items.len);
     }
 }
 
