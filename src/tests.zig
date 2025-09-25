@@ -1281,6 +1281,16 @@ test "Percentile calculations" {
 
     try testing.expectError(error.InvalidPercentile, ops.percentile(f32, allocator, t, 101, null));
 
+    var neg_pct = try Tensor(f32).init(allocator, &[_]usize{4});
+    defer neg_pct.deinit();
+
+    neg_pct.data[0] = 1.0;
+    neg_pct.data[1] = 2.0;
+    neg_pct.data[2] = std.math.nan(f32);
+    neg_pct.data[3] = 3.0;
+
+    try testing.expectError(error.InvalidPercentile, ops.percentile(f32, allocator, t, -0.1, null));
+
     //Test 2: Check if tensor has any valid values for percentile calculation
     var t2 = try Tensor(f32).init(allocator, &[_]usize{3});
     defer t2.deinit();
@@ -1345,6 +1355,22 @@ test "Percentile calculations" {
 
     for (neg_axis.data, test_res_neg_axis) |num1, num2| {
         try testing.expectEqual(num1, num2);
+    }
+
+    //Test 7: Testing all percentile ranges
+    var all_percentile = try Tensor(f32).init(allocator, &[_]usize{1000});
+    defer all_percentile.deinit();
+
+    for (all_percentile.data, 0..) |*val, i| {
+        val.* = @floatFromInt(i);
+    }
+
+    var percentile: f16 = 0;
+
+    while (percentile <= 100) : (percentile += 1) {
+        var range_test = try ops.percentile(f32, allocator, all_percentile, percentile, null);
+        defer range_test.deinit();
+        try testing.expect(true);
     }
 }
 
