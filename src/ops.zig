@@ -878,7 +878,7 @@ pub fn zeros(comptime T: type, allocator: Allocator, shape: []const usize) !Tens
 ///
 /// - Returns:
 ///     a boolean wheather or not the tensor's dimensions are equal
-pub fn isSquare(comptime T: type, tensor: *Tensor(T)) !bool {
+pub fn isSquare(comptime T: type, tensor: Tensor(T)) !bool {
     var prev_dim = tensor.shape[0];
 
     for (tensor.shape) |dim| {
@@ -2061,7 +2061,7 @@ pub fn percentile(comptime T: type, allocator: Allocator, tensor: *Tensor(T), pc
         std.mem.sort(T, pct_list.items, {}, std.sort.asc(T));
         var pct_tensor = try Tensor(T).init(allocator, &[_]usize{1});
 
-        pct_tensor.data[0] = try percentile_calculation(T, pct_list.items, pct);
+        pct_tensor.data[0] = try percentileCalculation(T, pct_list.items, pct);
         return pct_tensor;
     } else {
 
@@ -2108,7 +2108,7 @@ pub fn percentile(comptime T: type, allocator: Allocator, tensor: *Tensor(T), pc
 
             //Compute the percentile function and update tensor
             std.mem.sort(T, pct_list.items, {}, std.sort.asc(T));
-            pct_tensor.data[i] = try percentile_calculation(T, pct_list.items, pct);
+            pct_tensor.data[i] = try percentileCalculation(T, pct_list.items, pct);
         }
 
         return pct_tensor;
@@ -2116,7 +2116,7 @@ pub fn percentile(comptime T: type, allocator: Allocator, tensor: *Tensor(T), pc
 }
 
 //Helper function to compute the new tensor function
-fn percentile_calculation(comptime T: type, values: []const T, percent: u8) !T {
+fn percentileCalculation(comptime T: type, values: []const T, percent: u8) !T {
     const index = (@as(f64, @floatFromInt(percent)) / 100.0) * @as(f64, @floatFromInt(values.len - 1));
 
     if (index == @floor(index)) {
@@ -2130,8 +2130,8 @@ fn percentile_calculation(comptime T: type, values: []const T, percent: u8) !T {
     }
 }
 
-fn lu(comptime T: type, allocator: Allocator, tensor: Tensor(T)) !struct { Tensor(T), Tensor(T), Tensor(T) } {
-    if (try isSquare(f32, tensor) == false) {
+pub fn lu(comptime T: type, allocator: Allocator, tensor: Tensor(T)) !struct { Tensor(T), Tensor(T), Tensor(T) } {
+    if (try isSquare(T, tensor) == false) {
         return error.NotSquare;
     }
 
@@ -2139,27 +2139,129 @@ fn lu(comptime T: type, allocator: Allocator, tensor: Tensor(T)) !struct { Tenso
         return error.IncompatibleDimensions;
     }
 
-    var org_tensor_copy = try Tensor(T).init.allocator(allocator, tensor.shape);
-    defer org_tensor_copy.deinit();
-
-    for (tensor.data, 0..) |value, i| {
-        org_tensor_copy.data[i] = value;
+    for (tensor.data) |i|{
+        if (!std.math.isFinite(i)){
+            return error.NotFinite;
+        }
     }
+
+    //copy the original tensor
+    var org_tensor_copy = try Tensor(T).init(allocator, tensor.shape);
+    errdefer org_tensor_copy.deinit();
+    @memcpy(org_tensor_copy.data, tensor.data);
+
+    var partial_tensor = try eye(T, allocator, org_tensor_copy, 0);
+    errdefer partial_tensor.deinit();
+
+    var lower_tensor = try zeros(T, allocator, tensor.shape);
+    errdefer lower_tensor.deinit();
+
+    const n = org_tensor_copy.shape[0];
+
+    for (0..n) |k| {
+        var pivot_row = k;
+        var max_val = @abs(org_tensor_copy.data[k * n + k]);
+
+        // Find pivot
+        for (k + 1..n) |i| {
+            const idx = i * n + k;
+            if (@abs(org_tensor_copy.data[idx]) > max_val) {
+                max_val = @abs(org_tensor_copy.data[idx]);
+                pivot_row = i;
+            }
+        }
+
+        if (pivot_row != k) {
+            for (0..n) |j| {
+                const idx_k = k * n + j;
+                const idx_pivot = pivot_row * n + j;
+
+                // Swap in ort_tensor_copy
+                const temp_org = org_tensor_copy.data[idx_k];
+                org_tensor_copy.data[idx_k] = org_tensor_copy.data[idx_pivot];
+                org_tensor_copy.data[idx_pivot] = temp_org;
+
+                // Swap in partial_tensor
+                const temp_partial = partial_tensor.data[idx_k];
+                partial_tensor.data[idx_k] = partial_tensor.data[idx_pivot];
+                partial_tensor.data[idx_pivot] = temp_partial;
+            }
+
+            // Swap part for the lower tensor
+            if (k > 0) {
+                for (0..k) |j| {
+                    const idx_k = k * n + j;
+                    const idx_pivot = pivot_row * n + j;
+                    const temp = lower_tensor.data[idx_k];
+
+                    lower_tensor.data[idx_k] = lower_tensor.data[idx_pivot];
+                    lower_tensor.data[idx_pivot] = temp;
+                }
+            }
+        }
+
+        // Elimination step
+        for (k + 1..n) |i| {
+            const idx_ik = i * n + k;
+            const idx_kk = k * n + k;
+
+            // Compute and store multiplier in L
+            const multiplier = org_tensor_copy.data[idx_ik] / org_tensor_copy.data[idx_kk];
+            lower_tensor.data[idx_ik] = multiplier;
+
+            // Eliminate: update row i
+            for (k..n) |j| {
+                const idx_ij = i * n + j;
+                const idx_kj = k * n + j;
+                org_tensor_copy.data[idx_ij] -= multiplier * org_tensor_copy.data[idx_kj];
+            }
+        }
+    }
+
+    // Set diagonal of lower tensor to 1
+    for (0..n) |i| {
+        lower_tensor.data[i * n + i] = 1;
+    }
+
+    return .{ partial_tensor, lower_tensor, org_tensor_copy };
 }
 
-fn eye(comptime T: type, allocator: Allocator, tensor: Tensor(T), k: ?isize) !Tensor(T){
-    if (tensor.shape.len > 2){
+pub fn eye(comptime T: type, allocator: Allocator, tensor: Tensor(T), k: ?isize) !Tensor(T) {
+    if (tensor.shape.len != 2) {
         return error.IncompatibleDimensions;
     }
-    new_tensor = try Tensor(T).init(allocator, tensor.shape);
 
-    if (axis == null or k == 0){
-        
+    var eye_tensor = try zeros(T, allocator, tensor.shape);
+    errdefer eye_tensor.deinit();
+
+    const cols = eye_tensor.shape[1];
+    if (k == 0) {
+        for (eye_tensor.data, 0..) |_, i| {
+            const row = @divFloor(i, cols);
+            const col = i % cols;
+            if ((row == col)) {
+                eye_tensor.data[i] = 1;
+            }
+        }
+        return eye_tensor;
+    } else {
+        const normalized_axis = helper.normalAxis(cols, k);
+
+        if (normalized_axis >= @as(usize, @intCast(cols))) {
+            return error.IncorrectAxis;
+        }
+
+        for (eye_tensor.data, 0..) |_, i| {
+            const row = @divFloor(i, cols);
+            const col = i % cols;
+
+            const diff: isize = @as(isize, @intCast(col)) - @as(isize, @intCast(row));
+            if (diff == @as(isize, @intCast(normalized_axis))) {
+                eye_tensor.data[i] = 1;
+            }
+        }
+        return eye_tensor;
     }
-
-
-
-
 }
 
 // ------------------------ Machine Learning --------------------------------------
