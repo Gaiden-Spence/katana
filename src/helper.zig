@@ -19,3 +19,12 @@ pub fn product(arr: []usize) usize {
     }
     return result;
 }
+
+pub fn normalAxis(tensor_length: usize, axis: ?isize) usize {
+    const normalized_axis = if (axis.? < 0)
+        @as(usize, @intCast(@as(isize, @intCast(tensor_length)) + axis.?))
+    else
+        @as(usize, @intCast(axis.?));
+
+    return normalized_axis;
+}
