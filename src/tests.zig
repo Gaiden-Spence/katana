@@ -1438,6 +1438,151 @@ test "Percentile calculations" {
     }
 }
 
+test "Eye function" {
+    const allocator = testing.allocator;
+
+    // Test 1
+    var t1 = try Tensor(f32).init(allocator, &[_]usize{4});
+    defer t1.deinit();
+
+    try testing.expectError(error.IncompatibleDimensions, ops.eye(f32, allocator, t1, 0));
+
+    // Test 2
+    var t2 = try Tensor(f32).init(allocator, &[_]usize{ 3, 3 });
+    defer t2.deinit();
+
+    var regular_eye = try ops.eye(f32, allocator, t2, 0);
+    defer regular_eye.deinit();
+    const test_normal = [9]f32{ 1, 0, 0, 0, 1, 0, 0, 0, 1 };
+
+    for (regular_eye.data, test_normal) |num1, num2| {
+        try testing.expectEqual(num1, num2);
+    }
+
+    // Test 3
+    var t3 = try Tensor(f32).init(allocator, &[_]usize{ 4, 4 });
+    defer t3.deinit();
+
+    try testing.expectError(error.IncorrectAxis, ops.eye(f32, allocator, t3, 5));
+
+    // Test 4
+    var t4 = try Tensor(f32).init(allocator, &[_]usize{ 2, 5 });
+    defer t4.deinit();
+
+    var k_eye = try ops.eye(f32, allocator, t4, 2);
+    defer k_eye.deinit();
+    const test_k = [10]f32{ 0, 0, 1, 0, 0, 0, 0, 0, 1, 0 };
+
+    for (k_eye.data, test_k) |num1, num2| {
+        try testing.expectEqual(num1, num2);
+    }
+
+    // Test 5
+    var t5 = try Tensor(f32).init(allocator, &[_]usize{ 3, 3 });
+    defer t5.deinit();
+
+    var k_neg_eye = try ops.eye(f32, allocator, t5, -2);
+    defer k_neg_eye.deinit();
+    const test_neg_k = [9]f32{ 0, 1, 0, 0, 0, 1, 0, 0, 0 };
+
+    for (k_neg_eye.data, test_neg_k) |num1, num2| {
+        try testing.expectEqual(num1, num2);
+    }
+}
+
+test "LU decomp with partial pivoting" {
+    const allocator = testing.allocator;
+
+    // Test 1
+    var t1 = try Tensor(f32).init(allocator, &[_]usize{ 2, 4 });
+    defer t1.deinit();
+
+    try testing.expectError(error.NotSquare, ops.lu(f32, allocator, t1));
+
+    // Test 2
+    var t2 = try Tensor(f16).init(allocator, &[_]usize{ 3, 3, 3 });
+    defer t2.deinit();
+
+    try testing.expectError(error.IncompatibleDimensions, ops.lu(f16, allocator, t2));
+
+    // Test 3
+    var t3 = try Tensor(f32).init(allocator, &[_]usize{ 2, 2 });
+    defer t3.deinit();
+
+    t3.data[0] = 1.0;
+    t3.data[1] = 2.0;
+    t3.data[2] = std.math.nan(f32);
+    t3.data[3] = 3.0;
+
+    try testing.expectError(error.NotFinite, ops.lu(f32, allocator, t3));
+
+    //test 4 full functional case
+    const data = [_]f64{ 2, 1, 1, 4, -6, 0, -2, 7, 2 };
+    const shape = [_]usize{ 3, 3 };
+
+    var A = try Tensor(f64).init(allocator, &shape);
+    defer A.deinit();
+    @memcpy(A.data, &data);
+
+    const result = try ops.lu(f64, allocator, A);
+    var P = result[0];
+    var L = result[1];
+    var U = result[2];
+    defer P.deinit();
+    defer L.deinit();
+    defer U.deinit();
+
+    // Verify PA = LU
+    const n = 3;
+
+    // Compute PA
+    var PA = try Tensor(f64).init(allocator, &shape);
+    defer PA.deinit();
+    for (0..n) |i| {
+        for (0..n) |j| {
+            var sum: f64 = 0;
+            for (0..n) |k| {
+                sum += P.data[i * n + k] * A.data[k * n + j];
+            }
+            PA.data[i * n + j] = sum;
+        }
+    }
+
+    // Compute LU
+    var LU = try Tensor(f64).init(allocator, &shape);
+    defer LU.deinit();
+    for (0..n) |i| {
+        for (0..n) |j| {
+            var sum: f64 = 0;
+            for (0..n) |k| {
+                sum += L.data[i * n + k] * U.data[k * n + j];
+            }
+            LU.data[i * n + j] = sum;
+        }
+    }
+
+    // Check PA ≈ LU (within tolerance)
+    const tolerance = 1e-10;
+    for (0..n * n) |i| {
+        try testing.expectApproxEqAbs(PA.data[i], LU.data[i], tolerance);
+    }
+
+    // Verify L is lower triangular with 1s on diagonal
+    for (0..n) |i| {
+        try testing.expectApproxEqAbs(L.data[i * n + i], 1.0, tolerance);
+        for (i + 1..n) |j| {
+            try testing.expectApproxEqAbs(L.data[i * n + j], 0.0, tolerance);
+        }
+    }
+
+    // Verify U is upper triangular
+    for (0..n) |i| {
+        for (0..i) |j| {
+            try testing.expectApproxEqAbs(U.data[i * n + j], 0.0, tolerance);
+        }
+    }
+}
+
 test "Tensor stability checks" {
     const allocator = testing.allocator;
 
