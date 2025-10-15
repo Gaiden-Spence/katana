@@ -2,7 +2,7 @@
     .name = "katana",
     .version = "0.1.0",
 
-    .minimum_zig_version = "0.13.0",
+    .minimum_zig_version = "0.15.0",
 
     .paths = .{
         // Include all source files
