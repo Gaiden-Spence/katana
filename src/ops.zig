@@ -87,7 +87,8 @@ pub fn transpose(comptime T: type, tensor: *Tensor(T)) !void {
 
     const rows = tensor.shape[0];
     const cols = tensor.shape[1];
-    var new_data = try tensor.allocator.alignedAlloc(@TypeOf(tensor.data[0]), 32, rows * cols);
+    const alignment: std.mem.Alignment = .@"32";
+    var new_data = try tensor.allocator.alignedAlloc(@TypeOf(tensor.data[0]), alignment, rows * cols);
 
     for (0..rows) |i| {
         for (0..cols) |j| {
@@ -161,7 +162,8 @@ pub fn transposeAxes(comptime T: type, tensor: *Tensor(T), dim0: usize, dim1: us
     }
 
     // Allocate memory for transposed data
-    var new_data = try tensor.allocator.alignedAlloc(T, 32, tensor.data.len);
+    const alignment: std.mem.Alignment = .@"32";
+    var new_data = try tensor.allocator.alignedAlloc(T, alignment, tensor.data.len);
     errdefer tensor.allocator.free(new_data);
 
     // Calculate new strides
@@ -177,7 +179,7 @@ pub fn transposeAxes(comptime T: type, tensor: *Tensor(T), dim0: usize, dim1: us
     // Create coordinate arrays
     var coords = try tensor.allocator.alloc(usize, tensor.shape.len);
     defer tensor.allocator.free(coords);
-    @memset(coords, 0);
+    @memset(coords[0..], 0);
 
     // Perform the transpose operation
     const total_elements = tensor.data.len;
@@ -334,7 +336,7 @@ pub fn getChunk(comptime T: type, tensor: Tensor(T), dim: usize, chunk_idx: usiz
     var result_idx: usize = 0;
     var coords = try tensor.allocator.alloc(usize, tensor.shape.len);
     defer tensor.allocator.free(coords);
-    @memset(coords, 0);
+    @memset(coords[0..], 0);
 
     while (result_idx < total_elements) : (result_idx += 1) {
         // Calculate source coordinates
@@ -446,7 +448,7 @@ pub fn concat(comptime T: type, tensor: Tensor(T), other: Tensor(T), dim: usize)
     if (first_size > 0) {
         var coords = try tensor.allocator.alloc(usize, tensor.shape.len);
         defer tensor.allocator.free(coords);
-        @memset(coords, 0);
+        @memset(coords[0..], 0);
 
         var idx: usize = 0;
         while (idx < first_size) : (idx += 1) {
@@ -494,7 +496,7 @@ pub fn concat(comptime T: type, tensor: Tensor(T), other: Tensor(T), dim: usize)
     if (second_size > 0) {
         var coords = try tensor.allocator.alloc(usize, other.shape.len);
         defer tensor.allocator.free(coords);
-        @memset(coords, 0);
+        @memset(coords[0..], 0);
 
         var idx: usize = 0;
         while (idx < second_size) : (idx += 1) {
@@ -644,7 +646,7 @@ pub fn stack(comptime T: type, tensors: []const Tensor(T), dim: usize) !Tensor(T
     // Copy data from each input tensor
     var coords = try ref_tensor.allocator.alloc(usize, result.shape.len);
     defer ref_tensor.allocator.free(coords);
-    @memset(coords, 0);
+    @memset(coords[0..], 0);
 
     const elements_per_tensor = calculateSize(ref_shape);
 
@@ -809,7 +811,7 @@ pub fn randomTensor(comptime T: type, allocator: std.mem.Allocator, shape: []con
     var tensor = try Tensor(T).init(allocator, shape);
     errdefer tensor.deinit();
 
-    var rng = std.rand.DefaultPrng.init(seed);
+    var rng = std.Random.DefaultPrng.init(seed);
     for (tensor.data) |*val| {
         val.* = rng.random().float(T) * 2.0 - 1.0; // Values between -1 and 1
     }
@@ -850,14 +852,14 @@ pub fn zeros(comptime T: type, allocator: Allocator, shape: []const usize) !Tens
     }
 
     // Allocate aligned data array
-    const alignment = 32;
+    const alignment: std.mem.Alignment = .@"32";
     const data = try allocator.alignedAlloc(T, alignment, total_size);
     // Initialize all elements to zero
-    @memset(data, 0);
+    @memset(data[0..], 0);
 
     // Create tensor shape
     const tensor_shape = try allocator.alloc(usize, shape.len);
-    @memcpy(tensor_shape, shape);
+    @memcpy(tensor_shape[0..], shape);
 
     // Return initialized tensor
     return Tensor(T){
@@ -954,7 +956,7 @@ pub fn getStabilityInfo(comptime T: type, tensor: Tensor(T)) !Tensor(T).Stabilit
     var info = Tensor(@TypeOf(tensor.data[0])).StabilityInfo{};
 
     switch (@typeInfo(@TypeOf(tensor.data[0]))) {
-        .Float => {
+        .float => {
             for (tensor.data, 0..) |value, i| {
                 if (std.math.isNan(value)) {
                     info.has_nan = true;
@@ -1054,7 +1056,7 @@ pub fn hasInf(comptime T: type, tensor: Tensor(T)) !bool {
 /// ```
 pub fn replaceUnstable(comptime T: type, tensor: *Tensor(T), replacement: T) !void {
     switch (@typeInfo(@TypeOf(tensor.data[0]))) {
-        .Float => {
+        .float => {
             for (tensor.data) |*value| {
                 if (std.math.isNan(value.*) or std.math.isInf(value.*)) {
                     value.* = replacement;
@@ -1377,7 +1379,7 @@ pub fn broadcast_multiply(comptime T: type, a: *Tensor(T), b: Tensor(T)) !void {
     }
 
     // Copy result back to a
-    @memcpy(a.data, result.data);
+    @memcpy(a.data[0..], result.data);
 }
 
 /// Helper function for broadcasting subtraction.
@@ -1479,7 +1481,7 @@ pub fn matmul(comptime T: type, a: Tensor(T), b: Tensor(T), allocator: Allocator
     errdefer result.deinit();
 
     // Initialize result to zero
-    @memset(result.data, 0);
+    @memset(result.data[0..], 0);
 
     // Simple triple-loop matrix multiplication
     for (0..M) |i| {
@@ -1505,7 +1507,7 @@ fn optimizedMatmulF32(a: Tensor(f32), b: Tensor(f32), allocator: Allocator) !Ten
     errdefer result.deinit();
 
     // Initialize result to zero
-    @memset(result.data, 0);
+    @memset(result.data[0..], 0);
 
     // Calculate tile grid dimensions
     const tiles_M = (M + Tile - 1) / Tile;
@@ -1520,7 +1522,7 @@ fn optimizedMatmulF32(a: Tensor(f32), b: Tensor(f32), allocator: Allocator) !Ten
 
     // Create thread pool
     var thread_pool = try std.ArrayList(std.Thread).initCapacity(allocator, num_threads);
-    defer thread_pool.deinit();
+    defer thread_pool.deinit(allocator);
 
     // Create thread context
     const context = ThreadContext{
@@ -1544,7 +1546,8 @@ fn optimizedMatmulF32(a: Tensor(f32), b: Tensor(f32), allocator: Allocator) !Ten
     };
 
     for (0..num_threads) |_| {
-        try thread_pool.append(try std.Thread.spawn(.{}, WorkerFn.worker, .{context}));
+        const thread = try std.Thread.spawn(.{}, WorkerFn.worker, .{context});
+        try thread_pool.append(allocator, thread);
     }
 
     // Wait for all threads to complete
@@ -2009,7 +2012,7 @@ fn softmax(comptime T: type, tensor: *Tensor(T), dim: usize) !void {
 /// Note:
 /// - If the array is empty, the behavior of this function is undefined.
 pub fn gelu(comptime T: type, tensor: *Tensor(T)) !void {
-    if (@typeInfo(T) != .Float) {
+    if (@typeInfo(T) != .float) {
         @compileError("GELU operation requires floating-point tensor");
     }
 
