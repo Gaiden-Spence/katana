@@ -15,7 +15,7 @@ pub fn calculateGflops(allocator: std.mem.Allocator, M: usize, N: usize, K: usiz
     defer b.deinit();
 
     // Initialize with random data
-    var prng = std.rand.DefaultPrng.init(0);
+    var prng = std.Random.DefaultPrng.init(0);
     var random = prng.random();
     for (a.data) |*val| val.* = random.float(f32);
     for (b.data) |*val| val.* = random.float(f32);
@@ -53,7 +53,14 @@ pub fn main() !void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    // Define test sizes
+    // 1. Define an explicit buffer for the stdout writer
+    var stdout_buffer: [1024]u8 = undefined;
+
+    // 2. Get the file handle and create the buffered writer
+    var stdout_writer_wrapper = std.fs.File.stdout().writer(&stdout_buffer);
+    const stdout = &stdout_writer_wrapper.interface;
+
+    //Define test sizes
     const sizes = [_]struct { m: usize, n: usize, k: usize }{
         .{ .m = 256, .n = 256, .k = 256 },
         .{ .m = 512, .n = 512, .k = 512 },
@@ -68,12 +75,16 @@ pub fn main() !void {
 
     const iterations = 5;
 
-    try std.io.getStdOut().writer().print("\nRunning MatMul Benchmark\n", .{});
-    try std.io.getStdOut().writer().print("T = {d} \n", .{T});
-    try std.io.getStdOut().writer().print("Number of threads = {d}\n", .{try std.Thread.getCpuCount()});
+    // 3. Use the new 'stdout' Writer interface pointer for printing
+    try stdout.print("\nRunning MatMul Benchmark\n", .{});
+    try stdout.print("T = {d} \n", .{T});
+    try stdout.print("Number of threads = {d}\n", .{try std.Thread.getCpuCount()});
 
     for (sizes) |size| {
         const avg_gflops = try calculateGflops(allocator, size.m, size.n, size.k, iterations);
-        try std.io.getStdOut().writer().print("Matrix size: {d}x{d}x{d}, GFLOPS: {d:.2}\n", .{ size.m, size.n, size.k, avg_gflops });
+        try stdout.print("Matrix size: {d}x{d}x{d}, GFLOPS: {d:.2}\n", .{ size.m, size.n, size.k, avg_gflops });
     }
+
+    // 4. IMPORTANT: Flush the buffer to ensure all output is written to the terminal
+    try stdout.flush();
 }
