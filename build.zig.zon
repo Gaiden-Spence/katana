@@ -1,8 +1,9 @@
 .{
-    .name = "katana",
+    .name = .katana,
+    .fingerprint = 0x1b2081fce0df035f,
     .version = "0.1.0",
 
-    .minimum_zig_version = "0.15.0",
+    .minimum_zig_version = "0.15.2",
 
     .paths = .{
         // Include all source files
