@@ -24,9 +24,11 @@ pub fn build(b: *std.Build) void {
 
     // Tests
     const tests = b.addTest(.{
-        .root_source_file = b.path("src/tests.zig"),
-        .target = target,
-        .optimize = .ReleaseSafe, // ReleaseSafe for tests
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests.zig"),
+            .target = target,
+            .optimize = .ReleaseSafe,
+        }),
     });
 
     const run_tests = b.addRunArtifact(tests);
@@ -42,11 +44,12 @@ pub fn build(b: *std.Build) void {
     // Benchmarks
     const bench = b.addExecutable(.{
         .name = "bench",
-        .root_source_file = b.path("src/bench.zig"),
-        .target = target,
-        .optimize = .ReleaseFast, // ReleaseFast for benchmarks
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/bench.zig"),
+            .target = target,
+            .optimize = .ReleaseFast,
+        }),
     });
-
     const run_bench = b.addRunArtifact(bench);
 
     // Create a step for running the benchmarks
