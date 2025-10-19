@@ -44,15 +44,16 @@ pub fn Tensor(comptime DataType: type) type {
                 }
             }
             const shape_copy = try allocator.alloc(usize, shape.len);
-            @memcpy(shape_copy, shape);
+            @memcpy(shape_copy[0..], shape);
 
             // Now we know size fits in usize
             const final_size: usize = @intCast(size);
-            const data = try allocator.alignedAlloc(DataType, 32, final_size);
+            const alignment: std.mem.Alignment = .@"32";
+            const data = try allocator.alignedAlloc(DataType, alignment, final_size);
             if (DataType == bool) {
-                @memset(data, false);
+                @memset(data[0..], false);
             } else {
-                @memset(data, 0);
+                @memset(data[0..], 0);
             }
 
             const self = Tensor(DataType){
@@ -163,7 +164,7 @@ pub fn Tensor(comptime DataType: type) type {
 
             // Update shape
             const new_shape_copy = try self.allocator.alloc(usize, new_shape.len);
-            @memcpy(new_shape_copy, new_shape);
+            @memcpy(new_shape_copy[0..], new_shape);
 
             self.allocator.free(self.shape);
             self.shape = new_shape_copy;
@@ -338,14 +339,14 @@ pub fn Tensor(comptime DataType: type) type {
                 // Create coordinate arrays
                 var src_coords = try self.allocator.alloc(usize, self.shape.len);
                 defer self.allocator.free(src_coords);
-                @memset(src_coords, 0);
+                @memset(src_coords[0..], 0);
 
                 // Set the fixed dimension to the specified index
                 src_coords[dim] = index;
 
                 var dst_coords = try self.allocator.alloc(usize, result.shape.len);
                 defer self.allocator.free(dst_coords);
-                @memset(dst_coords, 0);
+                @memset(dst_coords[0..], 0);
 
                 // Copy data
                 const total_elements = calculateSize(result.shape);
@@ -444,7 +445,7 @@ pub fn Tensor(comptime DataType: type) type {
             // Copy data with proper indexing
             var coords = try self.allocator.alloc(usize, self.shape.len);
             defer self.allocator.free(coords);
-            @memset(coords, 0);
+            @memset(coords[0..], 0);
 
             var result_idx: usize = 0;
             while (true) {
@@ -568,7 +569,7 @@ pub fn Tensor(comptime DataType: type) type {
         /// - An error if the tensor cannot be copied for some reason.
         pub fn copy(self: Self) !Self {
             const new_tensor = try Self.init(self.allocator, self.shape);
-            @memcpy(new_tensor.data, self.data);
+            @memcpy(new_tensor.data[0..], self.data);
             return new_tensor;
         }
 
