@@ -413,7 +413,7 @@ test "complex transpose operations" {
             5.0, -6.0,  7.0,  -8.0,
             9.0, -10.0, 11.0, -12.0,
         };
-        @memcpy(tensor.data, &pattern);
+        @memcpy(tensor.data[0..], &pattern);
 
         try ops.transpose(f32, &tensor);
 
@@ -460,7 +460,7 @@ test "complex transpose operations" {
             4, 5, 6,
             7, 8, 9,
         };
-        @memcpy(tensor.data, &pattern);
+        @memcpy(tensor.data[0..], &pattern);
 
         try ops.transpose(f32, &tensor);
 
@@ -479,7 +479,7 @@ test "complex transpose operations" {
         defer row_tensor.deinit();
 
         const row_data = [_]f32{ 1, 2, 3, 4, 5 };
-        @memcpy(row_tensor.data, &row_data);
+        @memcpy(row_tensor.data[0..], &row_data);
 
         try ops.transpose(f32, &row_tensor);
         try expectEqual(@as(usize, 5), row_tensor.shape[0]);
@@ -490,7 +490,7 @@ test "complex transpose operations" {
         defer col_tensor.deinit();
 
         const col_data = [_]f32{ 1, 2, 3, 4, 5 };
-        @memcpy(col_tensor.data, &col_data);
+        @memcpy(col_tensor.data[0..], &col_data);
 
         try ops.transpose(f32, &col_tensor);
         try expectEqual(@as(usize, 1), col_tensor.shape[0]);
@@ -1508,11 +1508,11 @@ test "layerNorm basic functionality" {
     // Create weight and bias tensors
     var weight = try Tensor(f32).init(allocator, &[_]usize{3});
     defer weight.deinit();
-    @memset(weight.data, 1.0); // Scale factor of 1
+    @memset(weight.data[0..], 1.0); // Scale factor of 1
 
     var bias = try Tensor(f32).init(allocator, &[_]usize{3});
     defer bias.deinit();
-    @memset(bias.data, 0.0); // No bias
+    @memset(bias.data[0..], 0.0); // No bias
 
     // Apply layer normalization
     var result = try ops.layerNorm(f32, input, weight, bias, 1e-5);
@@ -1552,11 +1552,11 @@ test "layerNorm stability checks" {
 
         var weight = try Tensor(f32).init(allocator, &[_]usize{3});
         defer weight.deinit();
-        @memset(weight.data, 1.0);
+        @memset(weight.data[0..], 1.0);
 
         var bias = try Tensor(f32).init(allocator, &[_]usize{3});
         defer bias.deinit();
-        @memset(bias.data, 0.0);
+        @memset(bias.data[0..], 0.0);
 
         try testing.expectError(error.HasNaN, ops.layerNorm(f32, input, weight, bias, 1e-5));
     }
@@ -1565,15 +1565,15 @@ test "layerNorm stability checks" {
     {
         var input = try Tensor(f32).init(allocator, &[_]usize{ 2, 3 });
         defer input.deinit();
-        @memset(input.data, 1.0); // All same values -> zero variance
+        @memset(input.data[0..], 1.0); // All same values -> zero variance
 
         var weight = try Tensor(f32).init(allocator, &[_]usize{3});
         defer weight.deinit();
-        @memset(weight.data, 1.0);
+        @memset(weight.data[0..], 1.0);
 
         var bias = try Tensor(f32).init(allocator, &[_]usize{3});
         defer bias.deinit();
-        @memset(bias.data, 0.0);
+        @memset(bias.data[0..], 0.0);
 
         var result = try ops.layerNorm(f32, input, weight, bias, 1e-5);
         defer result.deinit();
@@ -1586,15 +1586,15 @@ test "layerNorm stability checks" {
     {
         var input = try Tensor(f32).init(allocator, &[_]usize{ 2, 3 });
         defer input.deinit();
-        @memset(input.data, 1.0);
+        @memset(input.data[0..], 1.0);
 
         var weight = try Tensor(f32).init(allocator, &[_]usize{3});
         defer weight.deinit();
-        @memset(weight.data, 1.0);
+        @memset(weight.data[0..], 1.0);
 
         var bias = try Tensor(f32).init(allocator, &[_]usize{3});
         defer bias.deinit();
-        @memset(bias.data, 0.0);
+        @memset(bias.data[0..], 0.0);
 
         try testing.expectError(error.InvalidEpsilon, ops.layerNorm(f32, input, weight, bias, -1e-5));
     }
@@ -2425,7 +2425,7 @@ test "argmax with empty tensor" {
 // Helper function to create and fill a tensor with test data
 fn createTestTensor(comptime T: type, allocator: std.mem.Allocator, shape: []const usize, data: []const T) !Tensor(T) {
     const tensor = try Tensor(T).init(allocator, shape);
-    @memcpy(tensor.data, data);
+    @memcpy(tensor.data[0..], data);
     return tensor;
 }
 
@@ -2438,7 +2438,7 @@ pub fn compareTensors(comptime T: type, expected: Tensor(T), actual: Tensor(T)) 
 
     for (expected.data, actual.data, 0..) |exp, act, i| {
         switch (@typeInfo(T)) {
-            .Float => {
+            .float => {
                 // Handle special values
                 if (std.math.isNan(exp)) {
                     if (!std.math.isNan(act)) {
@@ -2920,8 +2920,8 @@ test "matmul numerical stability" {
 
         // Using smaller values to avoid overflow
         const large: f32 = 1e3;
-        @memset(a.data, large);
-        @memset(b.data, large);
+        @memset(a.data[0..], large);
+        @memset(b.data[0..], large);
 
         var result = try ops.matmul(f32, a, b, allocator);
         defer result.deinit();
@@ -2944,8 +2944,8 @@ test "matmul numerical stability" {
         defer b.deinit();
 
         const small: f32 = 1e-3;
-        @memset(a.data, small);
-        @memset(b.data, small);
+        @memset(a.data[0..], small);
+        @memset(b.data[0..], small);
 
         var result = try ops.matmul(f32, a, b, allocator);
         defer result.deinit();
